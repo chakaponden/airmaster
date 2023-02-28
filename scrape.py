@@ -5,6 +5,19 @@ import struct
 import json
 import itertools
 
+# AirMaster AM7 Wi-Fi protocol:
+# 1. connect
+# you -> AirMaster 0000000303000006
+# AirMaster -> you 000000030f000007000a4d54464c50464d475244
+# you -> AirMaster 000000030f000008000a4d54464c50464d475244
+# AirMaster -> you 000000030400000900
+# AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
+
+# 2. request data
+# you -> AirMaster 0000000303000015
+# AirMaster -> you 0000000303000016
+# AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
+
 if "poll" in sys.argv:
     poll = True
 else:
@@ -20,17 +33,47 @@ if "-p" in sys.argv:
 else:
     port = 12416
 
-def reconnect(host, port):
+def airmaster_connect(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    handshake = bytes.fromhex('000000030f000008000a54454b4153485559524c05')
-    s.settimeout(10)
+    s.settimeout(30)
     s.connect((host, int(port)))
+
+    # you -> AirMaster 0000000303000006
+    pair_message = bytes.fromhex('0000000303000006')
     s.settimeout(None)
-    s.sendall(handshake)
+    s.sendall(pair_message)
+    # AirMaster -> you 000000030f000007000a4d54464c50464d475244
+    pair_response = s.recv(1024)
+    #print("pair_response: " + pair_response.hex())
+
+    # you -> AirMaster 000000030f000008000a4d54464c50464d475244
+    handshake_message = bytearray(pair_response)
+    confirmation_byte = handshake_message[7] + 1;
+    handshake_message = handshake_message[0:7] + confirmation_byte.to_bytes(1, byteorder="big") + handshake_message[8:]; 
+    s.sendall(handshake_message)
+    # AirMaster -> you 000000030400000900
     handshake_response = s.recv(1024)
-    data = True
+    #print("handshake_response: " + handshake_response.hex())
+
+    # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
+    data = s.recv(1024)
+    # do not handle AirMaster response
+    #if len(data) > 29:
+    #    decode(data)
+
     return s
 
+def airmaster_request_data(s, timeout):
+    # you -> AirMaster 0000000303000015
+    request_data = bytes.fromhex('0000000303000015')
+    s.settimeout(timeout)
+    s.sendall(request_data)
+    # AirMaster -> you 0000000303000016
+    data = s.recv(1024)
+    if data.hex() == '0000000303000016':
+        # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
+        data = s.recv(1024)
+    return data
 
 def decode(data):
     labels = {
@@ -91,24 +134,19 @@ def decode(data):
     
     print(json.dumps(sensors, indent=4))
 
-
-ping = bytes.fromhex('0000000303000006')
+# re initiate connection only if:
+# 1. we are trying to connect for the first time
+# 2. last time we did not get data we expected (> 29 bytes)
+reconnect = True
 while True:
-    s = reconnect(host, port)
-    data = True
-    rerun = False
-    while data:
-        data = s.recv(1024)
-        if len(data) > 29:
-            decode(data)
-            rerun = False
-        else:
-            rerun = True
-        #print (decode(data))
-        s.sendall(ping)
-        pong_response = s.recv(1024)
-        if (not poll or not pong_response) and not rerun:
-            data = False
-    s.close()
-    if not poll and not rerun:
-        break
+    if reconnect:
+        s = airmaster_connect(host, port)
+    response_data = airmaster_request_data(s, 60)
+    if len(response_data) > 29:
+        reconnect = False
+        decode(response_data)
+        if not poll:
+            break
+    else:
+        reconnect = True
+        s.close()
