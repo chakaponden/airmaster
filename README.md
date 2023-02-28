@@ -4,14 +4,14 @@ Single request:
 
 python3 ./scrape.py -h 192.168.88.13
 
-Continous poll:
+Request continuously:
 
-python3 ./scrape.py -h 192.168.88.13 poll
+python3 ./scrape.py -h 192.168.88.13 loop
 
 
 Example output:
 ```
-❯ python3 ./scrape.py poll
+❯ python3 ./scrape.py loop
 {
     "PM2.5": "10",
     "PM10": "12",

@@ -24,10 +24,10 @@ if "-d" in sys.argv:
 else:
     debug = False
 
-if "poll" in sys.argv:
-    poll = True
+if "loop" in sys.argv:
+    loop = True
 else:
-    poll = False
+    loop = False
 
 if "-h" in sys.argv:
     host = sys.argv[sys.argv.index("-h")+1]
@@ -166,7 +166,7 @@ while True:
     if len(response_data) > 29:
         reconnect = False
         decode(response_data)
-        if not poll:
+        if not loop:
             break
     else:
         reconnect = True
