@@ -4,14 +4,14 @@ Single request:
 
 python3 ./scrape.py -h 192.168.88.13
 
-Request continuously:
+Continous poll:
 
-python3 ./scrape.py -h 192.168.88.13 loop
+python3 ./scrape.py -h 192.168.88.13 poll
 
 
 Example output:
 ```
-❯ python3 ./scrape.py loop
+❯ python3 ./scrape.py
 {
     "PM2.5": "10",
     "PM10": "12",
@@ -20,23 +20,18 @@ Example output:
     "CO2": "655",
     "TEMP": "23.90",
     "RH": "63.00"
-}
-{
-    "PM2.5": "9",
-    "PM10": "11",
-    "HCHO": "0.09",
-    "TVOC": "1.13",
-    "CO2": "656",
-    "TEMP": "23.90",
-    "RH": "63.00"
-}
-{
-    "PM2.5": "10",
-    "PM10": "12",
-    "HCHO": "0.10",
-    "TVOC": "1.13",
-    "CO2": "655",
-    "TEMP": "23.80",
-    "RH": "62.90"
 }
 ```
+
+# AirMaster AM7 plus Wi-Fi protocol: #
+## connect ##
+1. you -> AirMaster: 0000000303000006
+2. AirMaster -> you: 000000030f000007000a4d54464c50464d475244
+3. you -> AirMaster: 000000030f000008000a4d54464c50464d475244
+4. AirMaster -> you: 000000030400000900
+5. AirMaster -> you: 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
+
+## request data ##
+1. you -> AirMaster: 0000000303000015
+2. AirMaster -> you: 0000000303000016
+3. AirMaster -> you: 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
