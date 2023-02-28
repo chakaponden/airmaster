@@ -4,6 +4,7 @@ import sys
 import struct
 import json
 import itertools
+import datetime
 
 # AirMaster AM7 Wi-Fi protocol:
 # 1. connect
@@ -17,6 +18,11 @@ import itertools
 # you -> AirMaster 0000000303000015
 # AirMaster -> you 0000000303000016
 # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
+
+if "-d" in sys.argv:
+    debug = True
+else:
+    debug = False
 
 if "poll" in sys.argv:
     poll = True
@@ -33,6 +39,14 @@ if "-p" in sys.argv:
 else:
     port = 12416
 
+def print_time_debug(args):
+    if debug:
+        print_time(args)
+
+def print_time(args):
+    print(datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3] + ": " + args)
+
+# initiate connection to airmaster device
 def airmaster_connect(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(30)
@@ -41,39 +55,45 @@ def airmaster_connect(host, port):
     # you -> AirMaster 0000000303000006
     pair_message = bytes.fromhex('0000000303000006')
     s.settimeout(None)
+    print_time_debug("-> pair_message: " + pair_message.hex())
     s.sendall(pair_message)
     # AirMaster -> you 000000030f000007000a4d54464c50464d475244
     pair_response = s.recv(1024)
-    #print("pair_response: " + pair_response.hex())
+    print_time_debug("<- pair_response: " + pair_response.hex())
 
     # you -> AirMaster 000000030f000008000a4d54464c50464d475244
     handshake_message = bytearray(pair_response)
     confirmation_byte = handshake_message[7] + 1;
     handshake_message = handshake_message[0:7] + confirmation_byte.to_bytes(1, byteorder="big") + handshake_message[8:]; 
+    print_time_debug("-> handshake_message: " + handshake_message.hex())
     s.sendall(handshake_message)
     # AirMaster -> you 000000030400000900
     handshake_response = s.recv(1024)
-    #print("handshake_response: " + handshake_response.hex())
+    print_time_debug("<- handshake_response: " + handshake_response.hex())
 
     # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
     data = s.recv(1024)
-    # do not handle AirMaster response
-    #if len(data) > 29:
-    #    decode(data)
+    print_time_debug("<- handshake_response: " + data.hex())
+    if len(data) > 29 and debug:
+        decode(data)
 
     return s
 
+# request data from airmaster sensors
 def airmaster_request_data(s, timeout):
     # you -> AirMaster 0000000303000015
     request_data = bytes.fromhex('0000000303000015')
     s.settimeout(timeout)
+    print_time_debug("-> request_data: " + request_data.hex())
     s.sendall(request_data)
     # AirMaster -> you 0000000303000016
-    data = s.recv(1024)
-    if data.hex() == '0000000303000016':
+    response_data = s.recv(1024)
+    print_time_debug("<- response_data: " + response_data.hex())
+    if response_data.hex() == '0000000303000016':
         # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
-        data = s.recv(1024)
-    return data
+        response_data = s.recv(1024)
+        print_time_debug("<- response_data: " + response_data.hex())
+    return response_data
 
 def decode(data):
     labels = {
@@ -142,6 +162,7 @@ while True:
     if reconnect:
         s = airmaster_connect(host, port)
     response_data = airmaster_request_data(s, 60)
+    print_time_debug("<- response_data: " + response_data.hex())
     if len(response_data) > 29:
         reconnect = False
         decode(response_data)
