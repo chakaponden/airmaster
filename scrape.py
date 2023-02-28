@@ -81,6 +81,7 @@ def airmaster_connect(host, port, timeout):
 def airmaster_get_first_data_after_connect(s):
     # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
     data = s.recv(1024)
+    print_time_debug("<- handshake_response: " + data.hex())
     return data
 
 # request data from airmaster sensors
@@ -169,7 +170,6 @@ while True:
     else:
         response_data = airmaster_request_data(s, timeout)
 
-    print_time_debug("<- response_data: " + response_data.hex())
     if len(response_data) > 29:
         reconnect = False
         decode(response_data)
