@@ -11,7 +11,7 @@ python3 ./scrape.py -h 192.168.88.13 poll
 
 Example output:
 ```
-❯ python3 ./scrape.py
+❯ python3 ./scrape.py -h 192.168.88.13
 {
     "PM2.5": "10",
     "PM10": "12",
