@@ -39,6 +39,11 @@ if "-p" in sys.argv:
 else:
     port = 12416
 
+if "-t" in sys.argv:
+    timeout = sys.argv[sys.argv.index("-p")+1]
+else:
+    timeout = 90
+
 def print_time_debug(args):
     if debug:
         print_time(args)
@@ -47,7 +52,7 @@ def print_time(args):
     print(datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3] + ": " + args)
 
 # initiate connection to airmaster device
-def airmaster_connect(host, port):
+def airmaster_connect(host, port, timeout):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(30)
     s.connect((host, int(port)))
@@ -71,13 +76,12 @@ def airmaster_connect(host, port):
     handshake_response = s.recv(1024)
     print_time_debug("<- handshake_response: " + handshake_response.hex())
 
+    return s
+
+def airmaster_get_first_data_after_connect(s):
     # AirMaster -> you 000000031a0000910407ff09646400c8001d00210001000f01a014820eba00
     data = s.recv(1024)
-    print_time_debug("<- handshake_response: " + data.hex())
-    if len(data) > 29 and debug:
-        decode(data)
-
-    return s
+    return data
 
 # request data from airmaster sensors
 def airmaster_request_data(s, timeout):
@@ -160,8 +164,11 @@ def decode(data):
 reconnect = True
 while True:
     if reconnect:
-        s = airmaster_connect(host, port)
-    response_data = airmaster_request_data(s, 60)
+        s = airmaster_connect(host, port, timeout)
+        response_data = airmaster_get_first_data_after_connect(s)
+    else:
+        response_data = airmaster_request_data(s, timeout)
+
     print_time_debug("<- response_data: " + response_data.hex())
     if len(response_data) > 29:
         reconnect = False
